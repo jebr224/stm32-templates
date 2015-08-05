@@ -9,9 +9,8 @@ PROJ_NAME=main
 # that's it, no need to change anything below this line!
 
 ###################################################
-
-CC=arm-none-eabi-gcc
-OBJCOPY=arm-none-eabi-objcopy
+CC="/Program Files (x86)/GNU Tools ARM Embedded/4.9 2015q1/bin/arm-none-eabi-gcc"
+OBJCOPY="/Program Files (x86)/GNU Tools ARM Embedded/4.9 2015q1/bin/arm-none-eabi-objcopy"
 
 CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld 
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork

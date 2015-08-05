@@ -33,6 +33,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 GPIO_InitTypeDef  GPIO_InitStructure;
+CAN_InitTypeDef   CAN_InitStructure;//jb
 
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -66,14 +67,30 @@ int main(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
 
+  CAN_InitStructure.CAN_Prescaler = 4;
+  CAN_InitStructure.CAN_Mode=CAN_Mode_Normal;
+  CAN_InitStructure.CAN_SJW=CAN_SJW_1tq;
+  CAN_InitStructure.CAN_BS1 = CAN_BS1_2tq;
+  CAN_InitStructure.CAN_BS2 = CAN_BS2_2tq;
+  CAN_InitStructure.CAN_TTCM = DISABLE; 
+  CAN_InitStructure.CAN_ABOM  = DISABLE; 
+  CAN_InitStructure.CAN_AWUM = DISABLE; 
+  CAN_InitStructure.CAN_NART = DISABLE; 
+  CAN_InitStructure.CAN_RFLM = DISABLE; 
+  CAN_InitStructure.CAN_TXFP = DISABLE; 
+  
+  
   while (1)
   {
+	  int i =0;
     /* PD12 to be toggled */
     GPIO_SetBits(GPIOD, GPIO_Pin_12);
     
     /* Insert delay */
-    Delay(0x3FFFFF);
-    
+	for(i=0;i<10;i++)
+	{
+		Delay(0x3FFFFF);
+    }
     /* PD13 to be toggled */
     GPIO_SetBits(GPIOD, GPIO_Pin_13);
     
@@ -121,7 +138,7 @@ void Delay(__IO uint32_t nCount)
   * @retval None
   */
 void assert_failed(uint8_t* file, uint32_t line)
-{ 
+{:
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 
