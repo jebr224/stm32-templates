@@ -1,5 +1,5 @@
-CC=arm-none-eabi-gcc
-AR=arm-none-eabi-ar
+CC=/Program Files (x86)/GNU Tools ARM Embedded/4.9 2015q1/bin/arm-none-eabi-gcc
+AR=/Program Files (x86)/GNU Tools ARM Embedded/4.9 2015q1/bin/arm-none-eabi-ar
 
 ###########################################
 
