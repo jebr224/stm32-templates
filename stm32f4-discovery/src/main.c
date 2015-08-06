@@ -1,120 +1,130 @@
-/**
-  ******************************************************************************
-  * @file    IO_Toggle/main.c 
-  * @author  MCD Application Team
-  * @version V1.0.0
-  * @date    19-September-2011
-  * @brief   Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
-  *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
-  ******************************************************************************  
-  */ 
-
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4_discovery.h"
+//ignor below JB john.broadbent.ky@gmail.com, CPU @8MHz APB @8MHz
+// STM32F4 CAN1 TX Loop, requires RX Node, CPU @168MHz APB1 @42MHz - sourcer32@gmail.com
+ 
+#include "stm32f4xx.h"
+ 
+ #include "stm32f4_discovery.h"
 #include "stm32f4xx_conf.h" // again, added because ST didn't put it here ?
 
-/** @addtogroup STM32F4_Discovery_Peripheral_Examples
-  * @{
-  */
+//jb hmmmfasdfa
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_can.h"
+//hmmm
+ void Delay(__IO uint32_t nCount);
 
-/** @addtogroup IO_Toggle
-  * @{
-  */ 
-
-/* Private typedef -----------------------------------------------------------*/
-GPIO_InitTypeDef  GPIO_InitStructure;
-CAN_InitTypeDef   CAN_InitStructure;//jb
-
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-void Delay(__IO uint32_t nCount);
-/* Private functions ---------------------------------------------------------*/
-
-/**
-  * @brief  Main program
-  * @param  None
-  * @retval None
-  */
 int main(void)
 {
-  /*!< At this stage the microcontroller clock setting is already configured, 
-       this is done through SystemInit() function which is called from startup
-       file (startup_stm32f4xx.s) before to branch to application main.
-       To reconfigure the default setting of SystemInit() function, refer to
-        system_stm32f4xx.c file
-     */
-
-  /* GPIOD Periph clock enable */
+  GPIO_InitTypeDef      GPIO_InitStructure;
+  RCC_ClocksTypeDef     RCC_Clocks;
+  CAN_InitTypeDef       CAN_InitStructure;
+  CAN_FilterInitTypeDef CAN_FilterInitStructure;
+ 
+  CanTxMsg TxMessage;
+ 
+  RCC_GetClocksFreq(&RCC_Clocks);
+ 
+  /* CAN GPIOs configuration **************************************************/
+  /* Enable GPIO clock */
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-
-  /* Configure PD12, PD13, PD14 and PD15 in output pushpull mode */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+ 
+  /* Connect CAN pins */
+  GPIO_PinAFConfig(GPIOD, GPIO_PinSource0, GPIO_AF_CAN1);
+  GPIO_PinAFConfig(GPIOD, GPIO_PinSource1, GPIO_AF_CAN1);
+ 
+  /* Configure CAN RX and TX pins */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-  CAN_InitStructure.CAN_Prescaler = 4;
-  CAN_InitStructure.CAN_Mode=CAN_Mode_Normal;
-  CAN_InitStructure.CAN_SJW=CAN_SJW_1tq;
-  CAN_InitStructure.CAN_BS1 = CAN_BS1_2tq;
-  CAN_InitStructure.CAN_BS2 = CAN_BS2_2tq;
-  CAN_InitStructure.CAN_TTCM = DISABLE; 
-  CAN_InitStructure.CAN_ABOM  = DISABLE; 
-  CAN_InitStructure.CAN_AWUM = DISABLE; 
-  CAN_InitStructure.CAN_NART = DISABLE; 
-  CAN_InitStructure.CAN_RFLM = DISABLE; 
-  CAN_InitStructure.CAN_TXFP = DISABLE; 
-  
-  
-  while (1)
+ 
+  /* CAN configuration ********************************************************/
+  /* Enable CAN clock */
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
+ 
+  /* CAN register init */
+  CAN_DeInit(CAN1);
+  CAN_StructInit(&CAN_InitStructure);
+ 
+  /* CAN cell init */
+  CAN_InitStructure.CAN_TTCM = DISABLE;
+  CAN_InitStructure.CAN_ABOM = DISABLE;
+  CAN_InitStructure.CAN_AWUM = DISABLE;
+  CAN_InitStructure.CAN_NART = DISABLE;
+  CAN_InitStructure.CAN_RFLM = DISABLE;
+  CAN_InitStructure.CAN_TXFP = DISABLE;
+  CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;
+ 
+ 
+ 
+  /* quanta 1+6+7 = 14, 14 * 3 = 42, 42000000 / 42 = 1000000 */
+  /* CAN Baudrate = 1Mbps (CAN clocked at 42 MHz) Prescale = 3 */
+ 
+  /* Requires a clock with integer division into APB clock */
+ 
+  CAN_InitStructure.CAN_SJW = CAN_SJW_1tq; // ? posible combos, I bet? // 1+6+7 = 14, 1+14+6 = 21, 1+15+5 = 21
+  CAN_InitStructure.CAN_BS1 = CAN_BS1_6tq;
+  CAN_InitStructure.CAN_BS2 = CAN_BS2_7tq;
+  //below is cleaver.  8MHz/14M = 0.571428571 = 0
+  CAN_InitStructure.CAN_Prescaler = RCC_Clocks.PCLK1_Frequency / (14 * 1000000); // quanta by baudrate
+ 
+  CAN_Init(CAN1, &CAN_InitStructure);
+ 
+  /* CAN filter init */
+  CAN_FilterInitStructure.CAN_FilterNumber = 0; // CAN1 [ 0..13]
+ 
+  CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask; // IdMask or IdList
+  CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit; // 16 or 32
+ 
+  CAN_FilterInitStructure.CAN_FilterIdHigh      = 0x0000; // Everything, otherwise 11-bit in top bits
+  CAN_FilterInitStructure.CAN_FilterIdLow       = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterMaskIdHigh  = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterMaskIdLow   = 0x0000;
+ 
+  CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FIFO0; // Rx
+  CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
+ 
+  CAN_FilterInit(&CAN_FilterInitStructure);
+ 
+  // transmit */
+  TxMessage.StdId = 0x123;
+  TxMessage.ExtId = 0x00;
+  TxMessage.RTR = CAN_RTR_DATA;
+  TxMessage.IDE = CAN_ID_STD;
+  TxMessage.DLC = 8;
+ 
+  TxMessage.Data[0] = 0x02;
+  TxMessage.Data[1] = 0x11;
+  TxMessage.Data[2] = 0x11;
+  TxMessage.Data[3] = 0x11;
+ 
+  while(1) // Do not want to exit
   {
-	  int i =0;
-    /* PD12 to be toggled */
-    GPIO_SetBits(GPIOD, GPIO_Pin_12);
-    
-    /* Insert delay */
-	for(i=0;i<10;i++)
-	{
-		Delay(0x3FFFFF);
+    volatile uint32_t i;
+    static int j = 0;
+    uint8_t TransmitMailbox = 0;
+ 
+    TxMessage.Data[4] = (j >>  0) & 0xFF; // Cycling
+    TxMessage.Data[5] = (j >>  8) & 0xFF;
+    TxMessage.Data[6] = (j >> 16) & 0xFF;
+    TxMessage.Data[7] = (j >> 24) & 0xFF;
+    j++;
+ 
+    TransmitMailbox = CAN_Transmit(CAN1, &TxMessage);
+ 
+    i = 0;
+    while((CAN_TransmitStatus(CAN1, TransmitMailbox) != CANTXOK) && (i != 0xFFFFFF)) // Wait on Transmit
+    {
+      i++;
     }
-    /* PD13 to be toggled */
-    GPIO_SetBits(GPIOD, GPIO_Pin_13);
-    
-    /* Insert delay */
-    Delay(0x3FFFFF);
-  
-    /* PD14 to be toggled */
-    GPIO_SetBits(GPIOD, GPIO_Pin_14);
-    
-    /* Insert delay */
-    Delay(0x3FFFFF);
-    
-    /* PD15 to be toggled */
-    GPIO_SetBits(GPIOD, GPIO_Pin_15);
-    
-    /* Insert delay */
-    Delay(0x7FFFFF);
-    
-    GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
-    
-    /* Insert delay */
-    Delay(0xFFFFFF);
   }
+  Delay(0x7FFFFF);
+
+  
 }
+ 
+ 
 
 /**
   * @brief  Delay Function.
@@ -128,8 +138,9 @@ void Delay(__IO uint32_t nCount)
   }
 }
 
+ 
+ 
 #ifdef  USE_FULL_ASSERT
-
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -138,23 +149,13 @@ void Delay(__IO uint32_t nCount)
   * @retval None
   */
 void assert_failed(uint8_t* file, uint32_t line)
-{:
+{
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-
+ 
   /* Infinite loop */
   while (1)
   {
   }
 }
 #endif
-
-/**
-  * @}
-  */ 
-
-/**
-  * @}
-  */ 
-
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
