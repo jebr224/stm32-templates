@@ -9,20 +9,86 @@
 //jb hmmmfasdfa
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_can.h"
+//#include "tm_stm32f4_usb_vcp.h"
+
 //hmmm
+
  void Delay(__IO uint32_t nCount);
 
+ void configCan1(void );
+ void configCan2(void );
+ 
 int main(void)
 {
+  
+
+  
+  CanTxMsg TxMessage;
+
+  
+  configCan1();
+  configCan2();
+  
+  // transmit */
+  TxMessage.StdId = 0x123;
+  TxMessage.ExtId = 0x00;
+  TxMessage.RTR = CAN_RTR_DATA;
+  TxMessage.IDE = CAN_ID_STD;
+  TxMessage.DLC = 8;
+ 
+  TxMessage.Data[0] = 0x02;
+  TxMessage.Data[1] = 0x11;
+  TxMessage.Data[2] = 0x11;
+  TxMessage.Data[3] = 0x11;
+ 
+  while(1) // Do not want to exit
+  {
+    volatile uint32_t i;
+    static int j = 0;
+    uint8_t TransmitMailbox = 0;
+ 
+    TxMessage.Data[4] = (j >>  0) & 0xFF; // Cycling
+    TxMessage.Data[5] = (j >>  8) & 0xFF;
+    TxMessage.Data[6] = (j >> 16) & 0xFF;
+    TxMessage.Data[7] = (j >> 24) & 0xFF;
+    j++;
+ 
+   //send CAN1
+    TransmitMailbox = CAN_Transmit(CAN1, &TxMessage);
+    i = 0;
+    while((CAN_TransmitStatus(CAN1, TransmitMailbox) != CANTXOK) && (i != 0xFFFFFF)) // Wait on Transmit
+    {
+      i++;
+    }
+	
+	//send CAN2
+	TransmitMailbox = CAN_Transmit(CAN2, &TxMessage);
+    i = 0;
+    while((CAN_TransmitStatus(CAN2, TransmitMailbox) != CANTXOK) && (i != 0xFFFFFF)) // Wait on Transmit
+    {
+      i++;
+    }
+	
+  
+  }
+  Delay(0x0FFFFF);
+
+  
+}
+ 
+ 
+ 
+ /**@brief set up can1 
+   *@param speed
+   *@retval None
+   */
+void configCan1(){
+
   GPIO_InitTypeDef      GPIO_InitStructure;
-  RCC_ClocksTypeDef     RCC_Clocks;
   CAN_InitTypeDef       CAN_InitStructure;
   CAN_FilterInitTypeDef CAN_FilterInitStructure;
- 
-  CanTxMsg TxMessage;
- 
-  RCC_GetClocksFreq(&RCC_Clocks);
- 
+	
+	
   /* CAN GPIOs configuration **************************************************/
   /* Enable GPIO clock */
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
@@ -57,7 +123,6 @@ int main(void)
   CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;
  
  
- 
   /* quanta 1+6+7 = 14, 14 * 3 = 42, 42000000 / 42 = 1000000 */
   /* CAN Baudrate = 1Mbps (CAN clocked at 42 MHz) Prescale = 3 */
  
@@ -87,45 +152,80 @@ int main(void)
  
   CAN_FilterInit(&CAN_FilterInitStructure);
  
-  // transmit */
-  TxMessage.StdId = 0x123;
-  TxMessage.ExtId = 0x00;
-  TxMessage.RTR = CAN_RTR_DATA;
-  TxMessage.IDE = CAN_ID_STD;
-  TxMessage.DLC = 8;
- 
-  TxMessage.Data[0] = 0x02;
-  TxMessage.Data[1] = 0x11;
-  TxMessage.Data[2] = 0x11;
-  TxMessage.Data[3] = 0x11;
- 
-  while(1) // Do not want to exit
-  {
-    volatile uint32_t i;
-    static int j = 0;
-    uint8_t TransmitMailbox = 0;
- 
-    TxMessage.Data[4] = (j >>  0) & 0xFF; // Cycling
-    TxMessage.Data[5] = (j >>  8) & 0xFF;
-    TxMessage.Data[6] = (j >> 16) & 0xFF;
-    TxMessage.Data[7] = (j >> 24) & 0xFF;
-    j++;
- 
-    TransmitMailbox = CAN_Transmit(CAN1, &TxMessage);
- 
-    i = 0;
-    while((CAN_TransmitStatus(CAN1, TransmitMailbox) != CANTXOK) && (i != 0xFFFFFF)) // Wait on Transmit
-    {
-      i++;
-    }
-  }
-  Delay(0x0FFFFF);
-
-  
+  return;
 }
- 
- 
+   
+ /**@brief set up can1 
+   *@param speed
+   *@retval None
+   */
+void configCan2(){
 
+  GPIO_InitTypeDef      GPIO_InitStructure;
+  CAN_InitTypeDef       CAN_InitStructure;
+  CAN_FilterInitTypeDef CAN_FilterInitStructure;
+	
+  /* CAN GPIOs configuration **************************************************/
+  /* Enable GPIO clock */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+ 
+  /* Connect CAN pins */
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_CAN2);
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_CAN2);
+ 
+  /* Configure CAN RX and TX pins */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+ 
+  /* CAN configuration ********************************************************/
+  /* Enable CAN clock */
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN2, ENABLE);
+  /* CAN register init */
+  CAN_DeInit(CAN2);
+  CAN_StructInit(&CAN_InitStructure);
+ 
+  /* CAN cell init */
+  CAN_InitStructure.CAN_TTCM = DISABLE;
+  CAN_InitStructure.CAN_ABOM = DISABLE;
+  CAN_InitStructure.CAN_AWUM = DISABLE;
+  CAN_InitStructure.CAN_NART = DISABLE;
+  CAN_InitStructure.CAN_RFLM = DISABLE;
+  CAN_InitStructure.CAN_TXFP = DISABLE;
+  CAN_InitStructure.CAN_Mode = CAN_Mode_Normal;
+ 
+ 
+ 
+  /* Requires a clock with integer division into APB clock */
+ 
+  CAN_InitStructure.CAN_SJW = CAN_SJW_1tq; // ? posible combos, I bet? // 1+6+7 = 14, 1+14+6 = 21, 1+15+5 = 21
+  CAN_InitStructure.CAN_BS1 = CAN_BS1_6tq;  //nvm //4 + 3+ 1 = 8
+  CAN_InitStructure.CAN_BS2 = CAN_BS2_7tq;
+  CAN_InitStructure.CAN_Prescaler = 3;
+  CAN_Init(CAN2, &CAN_InitStructure);
+ 
+  /* CAN filter init */
+  CAN_FilterInitStructure.CAN_FilterNumber = 0; // CAN1 [ 0..13]
+ 
+  CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask; // IdMask or IdList
+  CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit; // 16 or 32
+ 
+  CAN_FilterInitStructure.CAN_FilterIdHigh      = 0x0000; // Everything, otherwise 11-bit in top bits
+  CAN_FilterInitStructure.CAN_FilterIdLow       = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterMaskIdHigh  = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterMaskIdLow   = 0x0000;
+ 
+  CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FIFO0; // Rx
+  CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
+ 
+  CAN_FilterInit(&CAN_FilterInitStructure);
+ 
+  return;
+}
+   
 /**
   * @brief  Delay Function.
   * @param  nCount:specifies the Delay time length.
