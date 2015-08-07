@@ -64,11 +64,11 @@ int main(void)
   /* Requires a clock with integer division into APB clock */
  
   CAN_InitStructure.CAN_SJW = CAN_SJW_1tq; // ? posible combos, I bet? // 1+6+7 = 14, 1+14+6 = 21, 1+15+5 = 21
-  CAN_InitStructure.CAN_BS1 = CAN_BS1_6tq;
+  CAN_InitStructure.CAN_BS1 = CAN_BS1_6tq;  //nvm //4 + 3+ 1 = 8
   CAN_InitStructure.CAN_BS2 = CAN_BS2_7tq;
   //below is cleaver.  8MHz/14M = 0.571428571 = 0
-  CAN_InitStructure.CAN_Prescaler = RCC_Clocks.PCLK1_Frequency / (14 * 1000000); // quanta by baudrate
- 
+  //CAN_InitStructure.CAN_Prescaler = 5;//?;1;//RCC_Clocks.PCLK1_Frequency / (14 * 1000000); // quanta by baudrate
+  CAN_InitStructure.CAN_Prescaler = 3;//RCC_Clocks.PCLK1_Frequency / (14 * 1000000);
   CAN_Init(CAN1, &CAN_InitStructure);
  
   /* CAN filter init */
@@ -119,7 +119,7 @@ int main(void)
       i++;
     }
   }
-  Delay(0x7FFFFF);
+  Delay(0x0FFFFF);
 
   
 }
